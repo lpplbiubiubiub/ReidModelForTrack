@@ -1,9 +1,10 @@
 # coding:utf8
+import torch as T
 import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
-import torchvision
 from BasicModule import BasicModule
+import torchvision
 
 
 class ResNet(nn.Module):
@@ -14,44 +15,49 @@ class ResNet(nn.Module):
         101: torchvision.models.resnet101,
         152: torchvision.models.resnet152,
     }
-class ReidNetTripLoss(BasicModule):
-    """
-    Model for triplet loss
-    """
-    def __init__(self, id_num=751, net_name='resnet', pretrained=True, feature_dim=128):
-        super(ReidNetTripLoss, self).__init__()
-        self.id_num = id_num
-        if net_name == 'resnet':
-            # self.base = ResNet(block=Bottleneck, layers=[3, 4, 23, 3], num_classes=0)
-            self.base = ResNet.factory[50](pretrained=pretrained)
-            self.base_feature = self.base.fc.in_features
-        else:
-            raise NameError("net name is not predefined")
-        self.feature = nn.Linear(self.base_feature, 1024)
-        self.classifier = nn.Linear(1024, feature_dim)
-        init.kaiming_normal(self.feature.weight, mode='fan_out')
-        init.constant(self.feature.bias, 0)
-        init.normal(self.classifier.weight, std=0.001)
-        init.constant(self.classifier.bias, 0)
-        self.feat = nn.Sequential(self.feature,
-                                  self.classifier)
 
-    def avg_pool(self, x):
+
+class ReidNetHardTrip(nn.Module):
+    """
+    Test base reid net
+    """
+    def __init__(self, pretrained=True, encoder=False, resnet_50=False):
+        super(ReidNetHardTrip, self).__init__()
+        if not resnet_50:
+            self.base = ResNet.factory[18](pretrained=pretrained)
+        else:
+            self.base = ResNet.factory[50](pretrained=pretrained)
+        self._resnet_50 = resnet_50
+        self.nb_base_feature = self.base.fc.in_features
+        self.feat = nn.Linear(self.nb_base_feature, 512)
+        self.feat_bn = nn.BatchNorm1d(512, eps=1e-05, momentum=0.1, affine=True)
+        self.embedding_feature = nn.Linear(512, 128)
+        self.encoder = encoder
+        self.dropout = nn.Dropout(p=0.5)
+
+    def forward(self, x):
         for name, module in self.base._modules.items():
             if name == 'avgpool':
                 break
             x = module(x)
         x = F.avg_pool2d(x, x.size()[2:])
         x = x.view(x.size(0), -1)
-        return x
+        if self._resnet_50:
+            # x = self.feat(x)
+            pass
+        return F.normalize(x)
 
-    def forward(self, *args):
-        if len(args) == 3:
-            a, b, c = args
-            a_feature = self.feat(self.avg_pool(a))
-            b_feature = self.feat(self.avg_pool(b))
-            c_feature = self.feat(self.avg_pool(c))
-            return a_feature, b_feature, c_feature
-        else:
-            feature = self.feat(self.avg_pool(args[0]))
-            return feature
+
+class resnet_trip(nn.Module):
+    def __init__(self):
+        super(resnet_trip, self).__init__()
+        model = ResNet.factory[18](pretrained=True)
+        self.model = nn.Sequential(model.conv1, model.bn1, model.relu, model.maxpool, model.layer1,
+                                       model.layer2, model.layer3, model.layer4, nn.AvgPool2d(kernel_size=(5, 3)))
+
+    def forward(self, inputs):
+        inputs = self.model(inputs)
+        outputs = inputs.view(-1, 512)
+        outputs = F.normalize(outputs, p=2, dim=1)
+        return outputs
+
