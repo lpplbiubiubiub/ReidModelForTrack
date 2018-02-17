@@ -1,3 +1,4 @@
+
 import os
 from data import TripletLossDataset, EncoderDataset, NewDataset
 from loss import BatchHardTripletLoss
@@ -97,13 +98,14 @@ def train(**kwargs):
             name = time.strftime(prefix + '%m%d_%H:%M:%S.pth')
             torch.save(reid_model.state_dict(), name)
 
+
 def fw_train():
     env = Visualizer(opt.env)
     split_info = parse_split_info(opt.split_train_val)
     valid_dataset = TripletLossDataset(train_root=opt.data_root, nb_select_class=2, nb_select_items=6,
                                        nb_time=1, is_train=False, specified_id_list=split_info['query'])
     valid_dataloader = DataLoader(dataset=valid_dataset, batch_size=1)
-    cmc_valid_dataset = EncoderDataset(data_root=opt.data_root, specific_id_list=split_info['query'])
+    cmc_valid_dataset = EncoderDataset(data_root=opt.data_root, resize_size=opt.resize_size,  specific_id_list=split_info['query'])
     cmc_dataloader = DataLoader(dataset=cmc_valid_dataset, batch_size=12)
     reid_metric = CMC(dataloader=cmc_dataloader)
 
@@ -127,6 +129,8 @@ def fw_train():
                          batch_size=110, max_per_id=10, is_train=True, resize_size=opt.resize_size, iter_sz=20000,
                          nb_time=1, specified_id_list=split_info['trainval'])
     train_loader = DataLoader(dataset=dataset, batch_size=1)
+
+
     for iteration, (labels, inputs) in enumerate(train_loader):
         optimizer = exp_lr_scheduler(optimizer, iteration)
 
@@ -178,6 +182,39 @@ def val(model, dataloader, criterion, env):
     loss_log /= len(dataloader)
     env.plot("val_loss", loss_log)
     return loss_log
+
+def eval(**kwargs):
+    opt.parse(kwargs)
+
+    env = Visualizer(opt.env)
+    split_info = parse_split_info(opt.split_train_val)
+    valid_dataset = TripletLossDataset(train_root=opt.data_root, nb_select_class=2, nb_select_items=6,
+                                       nb_time=1, is_train=False, specified_id_list=split_info['query'],
+                                       resize_size=opt.resize_size)
+    valid_dataloader = DataLoader(dataset=valid_dataset, batch_size=1)
+    cmc_valid_dataset = EncoderDataset(data_root=opt.data_root, specific_id_list=split_info['query'],
+                                       resize_size=opt.resize_size)
+    cmc_dataloader = DataLoader(dataset=cmc_valid_dataset, batch_size=12)
+    reid_metric = CMC(dataloader=cmc_dataloader)
+
+    reid_model = getattr(models, opt.model_name)(resnet_50=True)
+    reid_model.load(opt.best_module_path)
+    min_valid_loss = 1e6
+    reid_model = nn.DataParallel(reid_model)
+    if opt.use_gpu:
+        reid_model.cuda()
+
+    epoch_size = opt.epoch_size
+    top1_best = -1
+
+
+    # Schedule learning rate
+
+    top1, top5, top10 = reid_metric.cmc(reid_model)
+    env.plot("top1", top1)
+    env.plot("top5", top5)
+    env.plot("top10", top10)
+
 
 
 if __name__ == "__main__":

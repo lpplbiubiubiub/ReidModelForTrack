@@ -36,7 +36,6 @@ class CMC(object):
             dat_list = [Variable(x) for x in dat_list]
             dat_list = [x.cuda() for x in dat_list]
             image_data_list = dat_list[0]
-            # feature_list = model.forward(image_data_list, {"encoder": True})
             feature_list = model.forward(image_data_list)
             feature_list_arr = feature_list.cpu().data.numpy()
             if final_feature is None:

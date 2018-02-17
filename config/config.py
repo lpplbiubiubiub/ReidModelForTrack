@@ -12,10 +12,11 @@ class DefaultConfig(object):
     resize_size = (100, 200)
     lr = 1e-4
     lr_decay = 0.1
-    weight_decay = 0
+    weight_decay = 1e-5
     epoch_size = 200
     decay_epoch_idx = 40
     use_gpu = True
+    best_module_path = "checkpoints/ReidTriLoss_resnet50_top1_0.843177189409_0216_18:08:31.pth"
 
 def parse(self, kwargs):
     '''

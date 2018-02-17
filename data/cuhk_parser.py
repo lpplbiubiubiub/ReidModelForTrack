@@ -51,7 +51,7 @@ class TripletLossDataset(data.Dataset):
     NOTICE:
         there is no need for embedding, because triplet loss have no embedding input
     """
-    def __init__(self, train_root="", nb_select_class=13, nb_select_items=10, is_train=True, resize_size=(128, 256), nb_time=1, specified_id_list = None):
+    def __init__(self, train_root="", nb_select_class=13, nb_select_items=10, is_train=True, resize_size=(100, 200), nb_time=1, specified_id_list = None):
         super(TripletLossDataset, self).__init__()
         assert os.path.exists(train_root), "data path is not exist"
         if type(specified_id_list) is list:
@@ -117,7 +117,7 @@ class NewDataset(data.Dataset):
     NOTICE:
         there is no need for embedding, because triplet loss have no embedding input
     """
-    def __init__(self, train_root="", batch_size=100, max_per_id=10, is_train=True, resize_size=(200, 100), iter_sz = 20000,  nb_time=1, specified_id_list = None):
+    def __init__(self, train_root="", batch_size=100, max_per_id=10, is_train=True, resize_size=(100, 200), iter_sz = 20000,  nb_time=1, specified_id_list = None):
         super(NewDataset, self).__init__()
         assert os.path.exists(train_root), "data path is not exist"
         if type(specified_id_list) is list:
@@ -136,8 +136,8 @@ class NewDataset(data.Dataset):
         self.id_order = 0
         self._iter_sz = iter_sz
 
-        self.h = resize_size[0]
-        self.w = resize_size[1]
+        self.h = resize_size[1]
+        self.w = resize_size[0]
 
         if is_train:
             self._transform = T.Compose([
@@ -188,7 +188,7 @@ class NewDataset(data.Dataset):
 
 class EncoderDataset(data.Dataset):
     def __init__(self, data_root="/home/xksj/Data/lp/re-identification/Market-1501-v15.09.15/bounding_box_train",
-                 resize_size=(200, 100), specific_id_list = None
+                 resize_size=(100, 200), specific_id_list = None
                  ):
         file_list = []
         for parent, pathnames, filenames in os.walk(data_root):
@@ -225,8 +225,7 @@ class EncoderDataset(data.Dataset):
 
 
 if __name__ == "__main__":
-    dataset = TripletLossDataset(train_root="/home/xksj/Data/lp/reid_train_data/corridor_train")
+    dataset = TripletLossDataset(train_root="/home/xksj/Data/lp/re-identification/Market-1501-v15.09.15/bounding_box_train")
     for i in range(len(dataset)):
         id_list, img_list = dataset[i]
-
 

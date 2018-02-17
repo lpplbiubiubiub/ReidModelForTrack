@@ -1,1 +1,1 @@
-from BatchHardTripletLoss import BatchHardTripletLoss
+from BatchHardTripletLoss import BatchHardTripletLoss, BatchHardTripletBlendLoss
