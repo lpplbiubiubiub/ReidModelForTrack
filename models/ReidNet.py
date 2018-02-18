@@ -17,7 +17,7 @@ class ResNet(nn.Module):
     }
 
 
-class ReidNetHardTrip(nn.Module):
+class ReidNetHardTrip(BasicModule):
     """
     Test base reid net
     """

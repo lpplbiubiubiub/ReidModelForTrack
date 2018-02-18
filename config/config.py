@@ -16,7 +16,7 @@ class DefaultConfig(object):
     epoch_size = 200
     decay_epoch_idx = 40
     use_gpu = True
-    best_module_path = "checkpoints/ReidTriLoss_resnet50_top1_0.843177189409_0216_18:08:31.pth"
+    best_module_path = "checkpoints/ReidTriLoss_resnet50_top1_0.860759493671_0216_22:44:04.pth"
 
 def parse(self, kwargs):
     '''

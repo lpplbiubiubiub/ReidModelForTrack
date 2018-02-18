@@ -83,11 +83,18 @@ def train(**kwargs):
             print("epoch {} batch {} has loss {}".format(epoch, ii, loss_log))
 
         reid_model.eval()
+        rk_dict = test(reid_model, opt.resize_size)
+        top1 = rk_dict[1]
+        top5 = rk_dict[5]
+        env.plot("fw_top1", top1)
+        env.plot("fw_top5", top5)
+        """
+        reid_model.eval()
         top1, top5, top10 = reid_metric.cmc(reid_model)
         env.plot("top1", top1)
         env.plot("top5", top5)
         env.plot("top10", top10)
-
+        """
         # test loss
         val_loss = val(reid_model, valid_dataloader, criterion, env)
         # scheduler.step(val_loss)
@@ -97,7 +104,6 @@ def train(**kwargs):
             prefix = 'checkpoints/' + "ReidTriLoss_resnet50_top1" + '_' + str(top1) + "_"
             name = time.strftime(prefix + '%m%d_%H:%M:%S.pth')
             torch.save(reid_model.state_dict(), name)
-
 
 def fw_train():
     env = Visualizer(opt.env)
@@ -156,13 +162,15 @@ def fw_train():
             top5 = rk_dict[5]
             env.plot("fw_top1", top1)
             env.plot("fw_top5", top5)
-
+        """
         if iteration % 200 == 0:
             val_loss = val(model, valid_dataloader, batch_hard_loss, env)
             top1, top5, top10 = reid_metric.cmc(model)
             env.plot("top1", top1)
             env.plot("top5", top5)
             env.plot("top10", top10)
+        """
+
 
 
 def val(model, dataloader, criterion, env):
@@ -198,26 +206,54 @@ def eval(**kwargs):
     reid_metric = CMC(dataloader=cmc_dataloader)
 
     reid_model = getattr(models, opt.model_name)(resnet_50=True)
-    reid_model.load(opt.best_module_path)
+
     min_valid_loss = 1e6
     reid_model = nn.DataParallel(reid_model)
     if opt.use_gpu:
         reid_model.cuda()
-
-    epoch_size = opt.epoch_size
-    top1_best = -1
-
-
+    reid_model.load_state_dict(torch.load(opt.best_module_path))
     # Schedule learning rate
-
+    reid_model.eval()
     top1, top5, top10 = reid_metric.cmc(reid_model)
     env.plot("top1", top1)
     env.plot("top5", top5)
     env.plot("top10", top10)
 
+def eval(model_path):
+    env = Visualizer(opt.env)
+    split_info = parse_split_info(opt.split_train_val)
+    valid_dataset = TripletLossDataset(train_root=opt.data_root, nb_select_class=2, nb_select_items=6,
+                                       nb_time=1, is_train=False, specified_id_list=split_info['query'],
+                                       resize_size=opt.resize_size)
+    valid_dataloader = DataLoader(dataset=valid_dataset, batch_size=1)
+    cmc_valid_dataset = EncoderDataset(data_root=opt.data_root, specific_id_list=split_info['query'],
+                                       resize_size=opt.resize_size)
+    cmc_dataloader = DataLoader(dataset=cmc_valid_dataset, batch_size=12)
+    reid_metric = CMC(dataloader=cmc_dataloader)
 
+    reid_model = getattr(models, opt.model_name)(resnet_50=True)
+
+    min_valid_loss = 1e6
+    reid_model = nn.DataParallel(reid_model)
+    if opt.use_gpu:
+        reid_model.cuda()
+    reid_model.load_state_dict(torch.load(model_path))
+    # Schedule learning rate
+    reid_model.eval()
+    top1, top5, top10 = reid_metric.cmc(reid_model)
+    env.plot("load_top1", top1)
+    env.plot("load_top5", top5)
+    env.plot("load_top10", top10)
+
+    reid_model.eval()
+    rk_dict = test(reid_model, opt.resize_size)
+    top1 = rk_dict[1]
+    top5 = rk_dict[5]
+    env.plot("load_fw_top1", top1)
+    env.plot("load_fw_top5", top5)
 
 if __name__ == "__main__":
     train()
+    # eval()
     # fuck()
     # fw_train()
